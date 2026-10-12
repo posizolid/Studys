@@ -1,0 +1,634 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>N5 Study Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one home dashboard (exam countdowns, pace status, timetable) plus a full page per subject with pace gauge, topic ratings, quiz, past paper log, deadlines and notes. Parents see the same pages read-only. */
+:root{
+  --bg:oklch(0.975 0.006 265);
+  --surface:oklch(1 0 0);
+  --fg:oklch(0.24 0.03 265);
+  --muted:oklch(0.5 0.03 265);
+  --line:oklch(0.9 0.012 265);
+  --accent:oklch(0.45 0.17 270);
+  --accent-fg:oklch(0.98 0.01 270);
+  --quiet:oklch(0.94 0.012 265);
+  --today:oklch(0.93 0.05 270);
+  --sbl:0.9; --sfl:0.28;
+  --display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --body:'DM Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'DM Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:oklch(0.19 0.025 265);--surface:oklch(0.24 0.03 265);--fg:oklch(0.94 0.01 265);--muted:oklch(0.72 0.03 265);
+  --line:oklch(0.33 0.03 265);--accent:oklch(0.75 0.13 270);--accent-fg:oklch(0.2 0.03 265);--quiet:oklch(0.27 0.03 265);--today:oklch(0.3 0.07 270);
+  --sbl:0.36;--sfl:0.93;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:oklch(0.19 0.025 265);--surface:oklch(0.24 0.03 265);--fg:oklch(0.94 0.01 265);--muted:oklch(0.72 0.03 265);
+  --line:oklch(0.33 0.03 265);--accent:oklch(0.75 0.13 270);--accent-fg:oklch(0.2 0.03 265);--quiet:oklch(0.27 0.03 265);--today:oklch(0.3 0.07 270);
+  --sbl:0.36;--sfl:0.93;color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:24px 56px}
+.wrap{max-width:1100px;margin-inline:auto;display:flex;flex-direction:column;gap:28px}
+#app{display:flex;flex-direction:column;gap:28px;min-width:0}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.1}
+h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;letter-spacing:-0.02em}
+h2{font-size:1.4rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lede{max-width:62ch;color:var(--muted)}
+.hint{color:var(--muted);font-size:.9rem}
+.mono{font-family:var(--mono)}
+.btn{font:inherit;font-weight:700;border:0;border-radius:8px;padding:10px 16px;background:var(--accent);color:var(--accent-fg);text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-height:40px}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.small{padding:6px 12px;min-height:34px;font-size:.88rem}
+.btn:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:default}
+.sechead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px;margin-bottom:12px}
+header{display:flex;flex-direction:column;gap:10px}
+.hbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+.banner{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;background:var(--today);border-radius:12px;padding:12px 16px}
+.banner b{font-family:var(--display)}
+
+.chip{align-self:flex-start;border-radius:6px;padding:3px 9px;font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+  background:oklch(var(--sbl) 0.09 var(--h));color:oklch(var(--sfl) 0.07 var(--h));display:inline-block}
+.pill{border-radius:99px;padding:3px 11px;font-size:.8rem;font-weight:700;display:inline-block;background:oklch(var(--sbl) 0.09 var(--h));color:oklch(var(--sfl) 0.07 var(--h))}
+.pill.ahead{--h:150}.pill.on{--h:210}.pill.behind{--h:30}
+
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.sumi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.sumi b{font-family:var(--display);font-size:1.7rem;line-height:1.1}
+.sumi span{color:var(--muted);font-size:.86rem}
+
+.tt-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;min-width:820px;width:100%;table-layout:fixed}
+th,td{padding:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);height:44px}
+tr:last-child td{border-bottom:0}
+th:last-child,td:last-child{border-right:0}
+thead th{font-family:var(--display);font-size:.9rem;padding:10px 6px;background:var(--quiet)}
+thead th.today{background:var(--accent);color:var(--accent-fg)}
+th.time,td.time{width:104px;position:sticky;left:0;z-index:1;background:var(--surface);font-family:var(--mono);font-size:.74rem;color:var(--muted);text-align:left;padding-inline:10px;white-space:nowrap}
+thead th.time{background:var(--quiet);z-index:2}
+td.c{text-align:center;font-size:.82rem;padding:2px}
+td.c.today{background:var(--today)}
+.slot{width:100%;height:100%;min-height:38px;border-radius:6px;font:inherit;font-weight:700;font-size:.82rem;line-height:1.2;padding:4px 6px;display:flex;align-items:center;justify-content:center;text-align:center;border:0;cursor:pointer;
+  background:oklch(var(--sbl) 0.09 var(--h));color:oklch(var(--sfl) 0.07 var(--h))}
+.slot:hover{box-shadow:0 0 0 2px var(--fg) inset}
+.plain{color:var(--muted);font-size:.78rem}
+.plain.school{opacity:.55}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{font:inherit;color:inherit;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px;cursor:pointer;min-width:0}
+.card:hover{border-color:var(--fg)}
+.card .sub{color:var(--muted);font-size:.88rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.bar{height:10px;border-radius:99px;background:var(--quiet);position:relative}
+.bar>i{display:block;height:100%;width:0;border-radius:99px;background:oklch(0.62 0.15 var(--h));transition:width .25s}
+.bar>u{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:var(--fg);border-radius:2px}
+.meta{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+
+.exams{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.ex{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font:inherit;color:inherit;background:none;border-inline:0;border-top:0;text-align:left;cursor:pointer;width:100%}
+.ex:last-child{border-bottom:0}
+.ex:hover{background:var(--quiet)}
+.ex .d{font-family:var(--mono);font-size:.82rem}
+.ex .left{font-family:var(--mono);font-size:.82rem;color:var(--muted);text-align:right}
+@media (max-width:560px){.ex{grid-template-columns:1fr auto}.ex .d{grid-column:1/-1}}
+
+.back{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tab{font:inherit;font-size:.85rem;font-weight:700;border:0;border-radius:8px;padding:7px 12px;white-space:nowrap;cursor:pointer;background:var(--quiet);color:var(--fg)}
+.tab[aria-current=page]{background:oklch(var(--sbl) 0.09 var(--h));color:oklch(var(--sfl) 0.07 var(--h));box-shadow:inset 0 0 0 2px oklch(var(--sfl) 0.07 var(--h))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.gauge-top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.big{font-family:var(--display);font-size:2.2rem;font-weight:800;line-height:1}
+details summary{cursor:pointer;color:var(--muted);font-size:.88rem}
+details p{margin-top:6px;font-size:.88rem;color:var(--muted);max-width:70ch}
+.pap{width:100%;border-collapse:collapse;min-width:0;table-layout:auto}
+.pap td,.pap th{height:auto;padding:6px 8px;border:0;border-bottom:1px solid var(--line);text-align:left;font-size:.9rem;font-weight:400;background:none}
+.pap th{font-family:var(--mono);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tw{overflow-x:auto}
+
+.topic{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.topic:last-child{border-bottom:0}
+.topic.ro{flex-direction:row;justify-content:space-between;align-items:center;gap:12px}
+.seg{display:flex;gap:4px;border:0;margin:0;padding:0;flex-wrap:wrap}
+.seg label{cursor:pointer}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg span{display:inline-block;padding:6px 12px;border-radius:8px;font-size:.84rem;font-weight:700;background:var(--quiet);color:var(--muted);min-height:32px}
+.seg input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.seg input:checked+span{background:oklch(var(--sbl) 0.09 var(--h));color:oklch(var(--sfl) 0.07 var(--h));box-shadow:inset 0 0 0 1.5px oklch(var(--sfl) 0.07 var(--h))}
+.seg .r0{--h:265}.seg .r1{--h:25}.seg .r2{--h:85}.seg .r3{--h:150}
+
+form.f{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld label{font-size:.76rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+input[type=text],input[type=number],input[type=date],select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;max-width:100%}
+textarea{width:100%;min-height:120px;resize:vertical}
+.err{color:var(--accent);font-size:.84rem;min-height:1em}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.list li:last-child{border-bottom:0}
+.x{font:inherit;border:0;background:var(--quiet);color:var(--fg);border-radius:6px;width:32px;height:32px;cursor:pointer;flex:none}
+.links{display:flex;flex-direction:column;gap:8px}
+.slots{display:flex;flex-wrap:wrap;gap:6px}
+.slots span{font-family:var(--mono);font-size:.76rem;background:var(--quiet);border-radius:6px;padding:4px 8px}
+.note{background:var(--quiet);border-radius:8px;padding:10px 12px;font-size:.88rem;color:var(--muted)}
+
+.qa{display:flex;flex-direction:column;gap:12px}
+.qq{font-family:var(--display);font-size:1.15rem;font-weight:600;line-height:1.3}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{font:inherit;text-align:left;color:var(--fg);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;display:flex;gap:10px;min-height:44px}
+.opt:hover:not([disabled]){border-color:var(--fg)}
+.opt[disabled]{cursor:default}
+.opt b{font-family:var(--mono);font-weight:500;color:var(--muted)}
+.opt.good{background:oklch(var(--sbl) 0.09 150);color:oklch(var(--sfl) 0.07 150);border-color:oklch(var(--sfl) 0.07 150)}
+.opt.bad{background:oklch(var(--sbl) 0.09 25);color:oklch(var(--sfl) 0.07 25);border-color:oklch(var(--sfl) 0.07 25)}
+.opt.good b,.opt.bad b{color:inherit}
+.why{background:var(--quiet);border-radius:8px;padding:10px 12px;font-size:.92rem}
+
+footer{color:var(--muted);font-size:.85rem;display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:reduce){.bar>i{transition:none}}
+</style>
+
+<div class="wrap">
+  <div id="app"></div>
+  <footer>
+    <p>Maths on the timetable is treated as National 5 Applications of Mathematics.</p>
+    <p>Exam dates come from the 2027 SQA timetable (<a href="https://www.sqa.org.uk/sqa/1439.html" target="_blank" rel="noopener">official timetable</a>). Check it before you rely on a date. Coursework deadlines are set by your school, so add them yourself on each subject page.</p>
+    <p>Achieve is made by Hashtag Learning and needs your own login (usually through Glow or your school code). <a href="https://letsachieve.co.uk" target="_blank" rel="noopener">letsachieve.co.uk</a> · <a href="https://achieve.hashtag-learning.co.uk/user-signup/" target="_blank" rel="noopener">Create an Achieve account</a></p>
+  </footer>
+</div>
+
+<script>
+const ACH="https://achieve.hashtag-learning.co.uk/accounts/login/";
+const START=new Date(2026,9,12);
+const SUBJ={
+ maths:{h:200,name:"Applications of Mathematics",tag:"Maths",
+  topics:["Managing finance and statistics","Geometry and measures","Numeracy","Non-calculator skills (Paper 1)"],
+  qn:"Use finance, statistics, geometry and measures questions that can be done without a diagram.",
+  links:[["Save My Exams: National 5 Maths","https://www.savemyexams.com/national-5/maths/"]]},
+ german:{h:10,name:"German",tag:"German",
+  topics:["Society","Learning","Employability","Culture","Reading and listening practice","Writing","Talking"],
+  qn:"Write the questions in English about German vocabulary, grammar (word order, cases, verb forms) and everyday phrases. German words are allowed inside questions and options.",
+  links:[],note:"Check whether German is on your Achieve home page. If not, use the vocabulary and past papers from your teacher."},
+ english:{h:250,name:"English",tag:"English",
+  topics:["Reading for Understanding, Analysis and Evaluation (RUAE)","Critical Reading: poetry","Critical Reading: your set text","Folio: writing pieces","Spoken language"],
+  qn:"Test reading and writing technique: word choice, imagery, tone, sentence structure, and how to answer analysis and evaluation questions. Use short example sentences you write yourself, never quotes from real poems or books.",
+  links:[]},
+ music:{h:135,name:"Music",tag:"Sax · Piano · Scales",
+  topics:["Instrument 1: saxophone pieces","Instrument 2: piano pieces","Scales and technical work","Understanding Music: listening and concepts"],
+  qn:"Test music theory and concepts that can be written in text: note values, key signatures, scales, intervals, tempo and dynamics terms, instruments and musical features. No questions that need audio or notation images.",
+  links:[]},
+ musictech:{h:305,name:"Music Technology",tag:"Music Tech",
+  topics:["Sound and music technology concepts","Practical production skills","Course assignment"],
+  qn:"Test sound and music technology concepts: microphones, signal flow, EQ, compression, effects, audio file formats, MIDI and mixing terms.",
+  links:[],note:"Check whether your school has Music Technology set up on Achieve. If it is not listed there, ask your teacher for the course notes."},
+ chemistry:{h:70,name:"Chemistry",tag:"Chemistry",
+  topics:["Chemical changes and structure","Nature's chemistry","Chemistry in society","Assignment (research and report)"],
+  qn:"Include short calculations and naming questions where suitable, written in plain text.",
+  links:[["SQA revision support for N5 Chemistry (PDF)","https://www.sqa.org.uk/sqa/files_ccc/2022-revision-support-learners-n5-chemistry.pdf"]]},
+ modstudies:{h:100,name:"Modern Studies",tag:"Mods",
+  topics:["Democracy in Scotland and the UK","Social issues in the UK","International issues","Assignment"],
+  qn:"Test knowledge of how institutions work and of key terms and concepts. Avoid claims about recent events that may have changed.",
+  links:[["SQA National 5 Modern Studies page: papers and course reports","https://www.sqa.org.uk/sqa/45702.html"],["SQA revision support for N5 Modern Studies (PDF)","https://www.sqa.org.uk/sqa/files_ccc/2022-revision-support-learners-n5-modern-studies.pdf"]]},
+ computing:{h:40,name:"Computing Science",tag:"Computing",
+  topics:["Software design and development: algorithms, data types, programming constructs","Computer systems: data representation, hardware, security","Database design and development: SQL","Web design and development: HTML, CSS, JavaScript","Assignment (practical task)"],
+  qn:"Use short code or SQL snippets written in plain text, in the style of the SQA reference language where it applies.",
+  links:[["SQA revision support for N5 Computing Science (PDF)","https://www.sqa.org.uk/sqa/files_ccc/2022-revision-support-learners-n5-computing-science.pdf"]]}
+};
+const EX={
+ maths:{d:[2027,3,26],papers:[["Paper 1 (non-calculator)","09:00–09:50"],["Paper 2","10:30–12:10"]]},
+ german:{d:[2027,3,30],papers:[["Reading and Writing","13:00–14:30"],["Listening (approx.)","15:00–15:30"]]},
+ english:{d:[2027,4,10],papers:[["Reading for Understanding, Analysis and Evaluation","09:00–10:00"],["Critical Reading","10:30–12:00"]]},
+ music:{d:[2027,4,11],papers:[["Music question paper (approx.)","09:00–09:45"]],note:"Your instrument performance is assessed separately. Your school sets that date."},
+ musictech:{d:[2027,4,13],papers:[["Music Technology (approx.)","13:00–14:00"]]},
+ chemistry:{d:[2027,4,21],papers:[["Chemistry","13:00–15:00"]]},
+ modstudies:{d:[2027,4,26],papers:[["Modern Studies","13:00–15:20"]]},
+ computing:{d:[2027,4,27],papers:[["Computing Science","09:00–10:30"]]}
+};
+const S=(t,s)=>({t,s}), P=(t,k)=>({t,k});
+const sch=P("school","school"), sl=P("sleep","sleep"), meal=t=>P(t,"meal"), e=P("","");
+const rows=[
+ ["07:00–07:30",30,[S("Computing","computing"),S("Chemistry","chemistry"),S("Maths","maths"),S("Music tech","musictech"),S("English Folio","english"),sl,sl]],
+ ["07:30–07:40",10,[S("Scales","music"),S("Scales","music"),S("Scales","music"),S("Scales","music"),S("Scales","music"),sl,sl]],
+ ["08:00–09:00",60,[sch,sch,sch,sch,sch,P("wake up","meal"),P("wake up","meal")]],
+ ["09:00–10:00",60,[sch,sch,sch,sch,sch,S("German","german"),S("Maths","maths")]],
+ ["10:00–11:00",60,[sch,sch,sch,sch,sch,S("Mods","modstudies"),S("Computing","computing")]],
+ ["11:00–12:00",60,[sch,sch,sch,sch,sch,S("Computing","computing"),S("Chemistry","chemistry")]],
+ ["12:00–13:00",60,[sch,sch,sch,sch,sch,e,e]],
+ ["13:00–14:00",60,[sch,sch,sch,sch,meal("Lunch"),P("Gym","meal"),P("Gym","meal")]],
+ ["14:00–15:00",60,[sch,sch,sch,sch,P("break","meal"),e,e]],
+ ["15:00–16:00",60,[sch,sch,sch,sch,P("G.T","meal"),e,e]],
+ ["16:30–17:00",30,[S("M-chem","chemistry"),S("Sax","music"),S("Sax","music"),S("German","german"),P("Eggs","meal"),e,e]],
+ ["17:30–18:00",30,[meal("Dinner"),meal("Dinner"),meal("Dinner"),S("Piano","music"),meal("Dinner"),meal("Dinner"),meal("Dinner")]],
+ ["18:30–19:00",30,[S("Mods","modstudies"),S("Gym / English RUAE","english"),S("English poem","english"),meal("Dinner"),S("Sax","music"),e,e]],
+ ["19:00–19:30",30,[S("Maths","maths"),S("Piano","music"),S("Piano","music"),S("Sax","music"),e,e,e]],
+ ["19:30+",60,[S("Music Tech","musictech"),S("German","german"),S("Music Tech","musictech"),S("Chemistry","chemistry"),e,e,e]]
+];
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"], LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const todayIdx=(new Date().getDay()+6)%7;
+const RL=["New","Shaky","Okay","Secure"], RH=[265,25,85,150];
+
+/* ---------- state ---------- */
+let st={rate:{},papers:{},notes:{},dl:{},quiz:{},updated:0};
+try{
+  const raw=localStorage.getItem("n5-v2");
+  if(raw){st=Object.assign(st,JSON.parse(raw))}
+  else{const old=JSON.parse(localStorage.getItem("n5-done")||"{}");
+    Object.keys(old).forEach(key=>{const m=key.match(/^([a-z]+)(\d+)$/);if(m)st.rate[m[1]+":"+m[2]]=3})}
+}catch(_){}
+const saveLocal=()=>{try{localStorage.setItem("n5-v2",JSON.stringify(st))}catch(_){}};
+const shared=()=>({rate:st.rate||{},papers:st.papers||{},dl:st.dl||{},quiz:st.quiz||{},updated:st.updated||Date.now()});
+/* roles */
+let ready=false, db=null, user=null, sampleFn=null, isOwner=true, preview=false, ref=null;
+const ro=()=>!isOwner||preview;
+let wt=null, inflight=false, dirty=false, lastWrite=0;
+function persist(){
+  saveLocal();
+  if(db&&ref&&isOwner){clearTimeout(wt);wt=setTimeout(flush,600)}
+}
+async function flush(){
+  if(inflight){dirty=true;return}
+  inflight=true;
+  try{lastWrite=Date.now();st.updated=lastWrite;saveLocal();await ref.set(shared())}catch(_){}
+  inflight=false;
+  if(dirty){dirty=false;flush()}
+}
+function applyShared(d){
+  st.rate=d.rate||{};st.papers=d.papers||{};st.dl=d.dl||{};st.quiz=d.quiz||{};st.updated=d.updated||0;
+}
+
+/* ---------- helpers ---------- */
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const midnight=()=>{const t=new Date();t.setHours(0,0,0,0);return t};
+const exDate=k=>new Date(EX[k].d[0],EX[k].d[1],EX[k].d[2]);
+const fmt=d=>d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
+const fmtShort=d=>d.toLocaleDateString("en-GB",{day:"numeric",month:"short"});
+const fmtWhen=t=>new Date(t).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+const daysTo=d=>Math.round((d-midnight())/864e5);
+const pct=x=>Math.round(x*100);
+const ORDER=Object.keys(SUBJ).sort((a,b)=>exDate(a)-exDate(b));
+const rpill=v=>`<span class="pill" style="--h:${RH[v]}">${RL[v]}</span>`;
+
+function metrics(k){
+  const n=SUBJ[k].topics.length;let pts=0,rated=0;
+  for(let i=0;i<n;i++){const v=st.rate[k+":"+i]||0;pts+=v;if(v)rated++}
+  const exam=exDate(k),target=new Date(exam);target.setDate(target.getDate()-14);
+  const f=Math.max(0,Math.min(1,(midnight()-START)/(target-START)));
+  const expected=f*0.85,progress=pts/(3*n),diff=progress-expected;
+  const status=diff>=0.05?"ahead":diff>=-0.08?"on":"behind";
+  const need=Math.max(0,Math.ceil(expected*3*n-pts-1e-9));
+  return {n,pts,rated,progress,expected,diff,status,need,target,exam};
+}
+const STAT={ahead:"Ahead of pace",on:"On track",behind:"Behind pace"};
+function advice(m){
+  if(m.status==="behind")return `${ro()?"This subject is":"You are"} about ${m.need} rating step${m.need===1?"":"s"} behind the pace line.${ro()?"":` Moving ${m.need} topic${m.need===1?"":"s"} up one level (New to Shaky, Shaky to Okay or Okay to Secure) puts you back on it.`}`;
+  if(m.status==="ahead")return ro()?"Ahead of the pace line.":"You are ahead of the pace line. Keep going, take a quiz and add past papers to the log.";
+  return ro()?"On the pace line.":"You are on the pace line. Keep the weekly slots and rate each topic as you finish it.";
+}
+const weekMins={};
+rows.forEach(r=>r[2].forEach(c=>{if(c.s)weekMins[c.s]=(weekMins[c.s]||0)+r[1]}));
+const hrs=m=>{const h=m/60;return (Math.round(h*2)/2).toString().replace(/\.0$/,"")+" h"};
+function slotsFor(k){const o=[];rows.forEach(r=>r[2].forEach((c,i)=>{if(c.s===k)o.push(`${DAYS[i]} ${r[0]}`)}));return o}
+const quizHist=k=>(st.quiz&&st.quiz[k])||[];
+
+/* ---------- banners ---------- */
+function banner(){
+  if(!isOwner)return `<div class="banner" role="status"><span><b>Parent view.</b> You can see progress, exam countdowns, marks and deadlines. It is read only.${st.updated?` Last updated ${fmtWhen(st.updated)}.`:" No progress has been saved yet."}</span></div>`;
+  if(preview)return `<div class="banner" role="status"><span><b>Previewing the parent view.</b> This is what a parent sees. Your notes stay private.</span><button class="btn small" data-act="unpreview">Back to my view</button></div>`;
+  return "";
+}
+
+/* ---------- home ---------- */
+function attention(){
+  const behind=ORDER.filter(k=>metrics(k).status==="behind").map(k=>SUBJ[k].name);
+  const shaky=[];ORDER.forEach(k=>SUBJ[k].topics.forEach((t,i)=>{if((st.rate[k+":"+i]||0)===1)shaky.push(`${SUBJ[k].name}: ${t.split(":")[0]}`)}));
+  const dls=[];ORDER.forEach(k=>(st.dl[k]||[]).forEach(d=>{const n=daysTo(new Date(d.date+"T00:00:00"));if(n<=14)dls.push({n,txt:`${SUBJ[k].name}: ${d.label}`})}));
+  dls.sort((a,b)=>a.n-b.n);
+  const qs=[];ORDER.forEach(k=>quizHist(k).forEach(q=>qs.push({t:q.t,txt:`${SUBJ[k].name}: ${q.s} out of ${q.n}`})));
+  qs.sort((a,b)=>b.t-a.t);
+  const li=a=>a.length?`<ul class="list">${a.map(x=>`<li><span>${esc(x)}</span></li>`).join("")}</ul>`:"";
+  return `<section class="panel"><h2>At a glance</h2>
+    <div><h3>Pace</h3><p class="hint">${behind.length?"Behind the pace line: "+esc(behind.join(", "))+".":"Every subject is on the pace line or ahead."}</p></div>
+    <div><h3>Topics rated Shaky</h3>${shaky.length?`<p class="hint">${shaky.length} topic${shaky.length===1?"":"s"}, for example:</p>${li(shaky.slice(0,6))}`:`<p class="hint">None right now.</p>`}</div>
+    <div><h3>Deadlines in the next 14 days</h3>${dls.length?`<ul class="list">${dls.map(d=>`<li><span>${esc(d.txt)}</span><span class="mono hint">${d.n<0?"overdue":d.n===0?"today":d.n+" days"}</span></li>`).join("")}</ul>`:`<p class="hint">None added.</p>`}</div>
+    <div><h3>Latest quizzes</h3>${qs.length?li(qs.slice(0,5).map(x=>x.txt+" ("+fmtWhen(x.t)+")")):`<p class="hint">No quizzes taken yet.</p>`}</div>
+  </section>`;
+}
+function home(){
+  let tot=0,behind=0;
+  ORDER.forEach(k=>{const m=metrics(k);tot+=m.progress;if(m.status==="behind")behind++});
+  const avg=pct(tot/ORDER.length);
+  const next=ORDER.map(k=>({k,d:exDate(k)})).filter(x=>daysTo(x.d)>=0)[0];
+  const todays=[];rows.forEach(r=>{const c=r[2][todayIdx];if(c.s)todays.push({time:r[0],c})});
+  const tt=['<thead><tr><th class="time">Time</th>'+DAYS.map((d,i)=>`<th class="${i===todayIdx?"today":""}">${d}</th>`).join("")+'</tr></thead><tbody>'];
+  rows.forEach(r=>{
+    tt.push(`<tr><td class="time">${r[0]}</td>`);
+    r[2].forEach((c,i)=>{const tc=i===todayIdx?" today":"";
+      if(c.s)tt.push(`<td class="c${tc}"><button class="slot" style="--h:${SUBJ[c.s].h}" data-go="${c.s}" aria-label="${esc(c.t)}, ${LONG[i]} ${r[0]}. Open ${esc(SUBJ[c.s].name)}">${esc(c.t)}</button></td>`);
+      else tt.push(`<td class="c${tc}"><span class="plain ${c.k==="school"?"school":""}">${esc(c.t)}</span></td>`)});
+    tt.push("</tr>");
+  });
+  const parent=ro();
+  return `
+  ${banner()}
+  <header>
+    <span class="eyebrow">SQA National 5 · Exams 26 Apr to 3 Jun 2027</span>
+    <h1>N5 Study Planner</h1>
+    <p class="lede">${parent?"A progress report for each National 5 subject. The pace line shows whether the revision is on schedule for the exam.":"Pick a subject for its own page: pace gauge, topic ratings, quiz, past paper log, deadlines and notes. The pace line shows whether you are keeping up for the exam."}</p>
+    ${parent?"":`<div class="hbar"><a class="btn" href="${ACH}" target="_blank" rel="noopener">Open Achieve</a></div>`}
+  </header>
+  <div class="sum">
+    <div class="sumi"><b>${next?daysTo(next.d):"0"} days</b><span>${next?"to the first exam: "+esc(SUBJ[next.k].name)+", "+fmt(next.d):"All exams have passed"}</span></div>
+    <div class="sumi"><b>${avg}%</b><span>average topic confidence across all subjects</span></div>
+    <div class="sumi"><b>${behind} of ${ORDER.length}</b><span>subjects behind their pace line</span></div>
+  </div>
+  ${parent?attention():""}
+  <section>
+    <div class="sechead"><h2>Subjects</h2><span class="hint">The black tick on each bar is where the pace line is today.</span></div>
+    <div class="cards">${ORDER.map(k=>{const s=SUBJ[k],m=metrics(k);
+      return `<button class="card" data-go="${k}" style="--h:${s.h}"><div class="row"><span class="chip">${esc(s.tag)}</span><span class="pill ${m.status}">${STAT[m.status]}</span></div><h3>${esc(s.name)}</h3><span class="sub">Exam ${fmt(m.exam)} · ${daysTo(m.exam)} days</span><div class="bar"><i style="width:${pct(m.progress)}%"></i><u style="left:${pct(m.expected)}%"></u></div><div class="meta"><span>${m.rated} of ${m.n} topics rated</span><span>${pct(m.progress)}%</span></div></button>`}).join("")}</div>
+  </section>
+  <section>
+    <div class="sechead"><h2>Exam countdown</h2><span class="hint">In date order</span></div>
+    <div class="exams">${ORDER.map(k=>{const d=exDate(k),n=daysTo(d);return `<button class="ex" data-go="${k}" style="--h:${SUBJ[k].h}"><span class="d">${fmt(d)}</span><span><span class="chip">${esc(SUBJ[k].name)}</span></span><span class="left">${n>=0?n+" days":"done"}</span></button>`}).join("")}</div>
+  </section>
+  ${parent?"":`<section>
+    <div class="sechead"><h2>Today, ${LONG[todayIdx]}</h2></div>
+    ${todays.length?`<div class="slots">${todays.map(x=>`<button class="slot" style="--h:${SUBJ[x.c.s].h};width:auto;padding:8px 14px;gap:10px" data-go="${x.c.s}"><span class="mono" style="font-weight:400">${x.time}</span> ${esc(x.c.t)}</button>`).join("")}</div>`:`<p class="hint">No study slots today.</p>`}
+  </section>`}
+  <section>
+    <div class="sechead"><h2>This week</h2><span class="hint">Tap a slot to open its subject. Scroll sideways on a phone.</span></div>
+    <div class="tt-scroll"><table aria-label="Weekly study timetable">${tt.join("")}</tbody></table></div>
+  </section>
+  ${(!parent&&db)?`<section class="panel"><h2>Let a parent see your progress</h2>
+    <p>Your ratings, past paper marks, deadlines and quiz scores save to this page as you go. Use the Share menu on this page and give your parent Viewer access. They sign in to Claude, open the link and see a read-only report. Only you can change anything. Your notes stay private on this device.</p>
+    <div><button class="btn ghost" data-act="preview">Preview the parent view</button></div></section>`:""}`;
+}
+
+/* ---------- subject page ---------- */
+function subject(k){
+  const s=SUBJ[k],ex=EX[k],m=metrics(k),R=ro();
+  const papers=st.papers[k]||[], dls=(st.dl[k]||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
+  const sumG=papers.reduce((a,p)=>a+p.got,0),sumO=papers.reduce((a,p)=>a+p.out,0);
+  const avg=sumO?Math.round(sumG/sumO*100)+"%":"none yet";
+  const slots=slotsFor(k), qh=quizHist(k);
+  const topicsHtml=s.topics.map((t,i)=>{const v=st.rate[k+":"+i]||0;
+    if(R)return `<div class="topic ro"><span>${esc(t)}</span>${rpill(v)}</div>`;
+    return `<div class="topic"><span>${esc(t)}</span><fieldset class="seg" aria-label="Confidence: ${esc(t)}" style="border:0">${RL.map((l,j)=>`<label><input type="radio" name="r-${k}-${i}" id="r-${k}-${i}-${j}" data-k="${k}" data-i="${i}" value="${j}" ${v===j?"checked":""}><span class="r${j}">${l}</span></label>`).join("")}</fieldset></div>`}).join("");
+  const quizPanel=(!R&&sampleFn)?`<section class="panel" id="quiz-panel"><h2>Quiz me</h2><div id="quiz-area" class="qa"></div><div id="quiz-hist"></div></section>`:
+    (R&&qh.length?`<section class="panel"><h2>Quizzes</h2>${histHtml(k)}</section>`:"");
+  return `
+  ${banner()}
+  <div class="back"><button class="btn ghost small" data-go="home">← All subjects</button></div>
+  <div class="tabs" role="navigation" aria-label="Subjects">${ORDER.map(x=>`<button class="tab" data-go="${x}" style="--h:${SUBJ[x].h}" ${x===k?'aria-current="page"':""}>${esc(SUBJ[x].name)}</button>`).join("")}</div>
+  <header style="--h:${s.h}">
+    <span class="chip">National 5</span>
+    <h1>${esc(s.name)}</h1>
+    <p class="lede">Exam ${fmt(m.exam)}. ${daysTo(m.exam)} days to go.</p>
+  </header>
+  <section class="panel" style="--h:${s.h}">
+    <div class="gauge-top"><div><span class="big" id="g-pct">${pct(m.progress)}%</span> <span class="hint">topic confidence</span></div><span class="pill ${m.status}" id="g-pill">${STAT[m.status]}</span></div>
+    <div class="bar"><i id="g-fill" style="width:${pct(m.progress)}%"></i><u id="g-mark" style="left:${pct(m.expected)}%"></u></div>
+    <div class="meta"><span>0%</span><span id="g-exp">Pace line today: ${pct(m.expected)}%</span><span>100%</span></div>
+    <p id="g-text">${advice(m)}</p>
+    <details><summary>How the pace line works</summary><p>Each topic is rated New (0), Shaky (1), Okay (2) or Secure (3). The percentage is the points out of the maximum. The pace line rises evenly from 12 Oct 2026 to two weeks before this exam (${fmtShort(m.target)}), and ends at 85%, which means most topics Okay or Secure. After that date, the time is for past papers.</p></details>
+  </section>
+  <div class="cols" style="--h:${s.h}">
+    <div class="col">
+      <section class="panel"><h2>Topics</h2><p class="hint">${R?"How confident each topic feels.":"Rate how confident you feel. Be honest, it is for you."} <span id="t-count">${m.rated} of ${m.n} rated</span></p>
+        <div>${topicsHtml}</div>
+      </section>
+      ${quizPanel}
+      <section class="panel"><div class="row"><h2>Past papers</h2><span class="hint">Average: <b id="p-avg">${avg}</b></span></div>
+        ${R?"":`<form class="f" data-form="paper" novalidate>
+          <div class="fld"><label for="p-name">Paper</label><input type="text" id="p-name" placeholder="e.g. 2025 Paper 1" maxlength="60"></div>
+          <div class="fld"><label for="p-got">Mark</label><input type="number" id="p-got" min="0" step="any" style="width:80px"></div>
+          <div class="fld"><label for="p-out">Out of</label><input type="number" id="p-out" min="1" step="any" style="width:80px"></div>
+          <button class="btn small" type="submit">Add</button>
+        </form>
+        <p class="err" id="p-err" role="alert"></p>`}
+        ${papers.length?`<div class="tw"><table class="pap"><thead><tr><th>Paper</th><th>Mark</th><th>%</th>${R?"":"<th></th>"}</tr></thead><tbody>${papers.map((p,i)=>`<tr><td>${esc(p.name)}</td><td class="mono">${p.got}/${p.out}</td><td class="mono">${Math.round(p.got/p.out*100)}%</td>${R?"":`<td><button class="x" data-delp="${i}" aria-label="Delete ${esc(p.name)}">×</button></td>`}</tr>`).join("")}</tbody></table></div>`:`<p class="hint">${R?"No past papers logged yet.":"Log each past paper you sit. Aim for a few before the exam, and mark them against the official marking instructions."}</p>`}
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel"><h2>Exam</h2>
+        <ul class="list">${ex.papers.map(p=>`<li><span>${esc(p[0])}</span><span class="mono">${p[1]}</span></li>`).join("")}</ul>
+        <p class="hint">${fmt(m.exam)}. Times on the 2027 SQA timetable.</p>
+        ${ex.note?`<p class="note">${esc(ex.note)}</p>`:""}
+      </section>
+      ${R?"":`<section class="panel"><h2>Revision links</h2>
+        <div class="links"><a class="btn" href="${ACH}" target="_blank" rel="noopener">Open Achieve for ${esc(s.name)}</a>${s.links.map(l=>`<a href="${l[1]}" target="_blank" rel="noopener">${esc(l[0])}</a>`).join("")}</div>
+        ${s.note?`<p class="note">${esc(s.note)}</p>`:""}
+      </section>`}
+      <section class="panel"><h2>Deadlines</h2>
+        ${R?"":`<form class="f" data-form="dl" novalidate>
+          <div class="fld"><label for="d-name">What</label><input type="text" id="d-name" placeholder="e.g. Assignment hand-in" maxlength="60"></div>
+          <div class="fld"><label for="d-date">Date</label><input type="date" id="d-date"></div>
+          <button class="btn small" type="submit">Add</button>
+        </form>
+        <p class="err" id="d-err" role="alert"></p>`}
+        ${dls.length?`<ul class="list">${dls.map(d=>{const n=daysTo(new Date(d.date+"T00:00:00"));return `<li><span>${esc(d.label)}<br><span class="hint mono">${fmt(new Date(d.date+"T00:00:00"))} · ${n<0?"overdue":n===0?"today":n+" days"}</span></span>${R?"":`<button class="x" data-deld="${d.id}" aria-label="Delete ${esc(d.label)}">×</button>`}</li>`}).join("")}</ul>`:`<p class="hint">${R?"No deadlines added.":"Add coursework dates your school gives you."}</p>`}
+      </section>
+      <section class="panel"><h2>Study slots</h2>
+        <p class="hint">About ${hrs(weekMins[k]||0)} a week on the timetable.</p>
+        <div class="slots">${slots.map(x=>`<span>${x}</span>`).join("")}</div>
+      </section>
+      ${R?"":`<section class="panel"><h2>Notes</h2>
+        <label for="notes" class="hint">Things to remember, weak spots, questions for your teacher. Notes stay on this device.</label>
+        <textarea id="notes" data-notes="${k}">${esc(st.notes[k]||"")}</textarea>
+      </section>`}
+    </div>
+  </div>`;
+}
+function histHtml(k){
+  const qh=quizHist(k).slice().reverse().slice(0,6);
+  if(!qh.length)return `<p class="hint">No quizzes taken yet. Your scores will show here.</p>`;
+  return `<h3>Recent scores</h3><ul class="list">${qh.map(q=>`<li><span>${q.s} out of ${q.n}</span><span class="mono hint">${fmtWhen(q.t)}</span></li>`).join("")}</ul>`;
+}
+
+/* ---------- quiz ---------- */
+let qz=null, qctl=null;
+const LET=["A","B","C","D"];
+const qerr={not_granted:"Claude was not allowed to write a quiz. You can allow it the next time you start one.",sampling_disabled:"Claude is not available for this account.",rate_limited:"Too many requests just now. Wait a little and try again.",session_expired:"Sign in to Claude again, then start the quiz.",refused:"Claude could not write a quiz for that. Try again.",invalid_json:"The questions came back in a form the page could not read. Try again.",empty_completion:"No questions came back. Try again."};
+function quizPrompt(k,n){
+  const s=SUBJ[k];
+  const tl=s.topics.map((t,i)=>{const v=st.rate[k+":"+i]||0;return `${i}: ${t} (student rates it ${RL[v]})`}).join("\n");
+  return `You are a Scottish teacher setting a short multiple-choice quiz for a student studying SQA National 5 ${s.name}.
+
+Topics:
+${tl}
+
+Write exactly ${n} questions at National 5 standard. Cover the topics, and give more questions to topics the student rates New or Shaky. Each question has exactly 4 options and exactly one correct answer. Spread the correct answer across positions. Keep options short. Write original questions and never copy past paper text. ${s.qn}
+
+Reply with only a JSON array, no other text, in this shape:
+[{"topic":0,"q":"question text","options":["option","option","option","option"],"answer":2,"why":"one or two sentences explaining the correct answer"}]
+"topic" is the topic number above, "answer" is the index 0 to 3 of the correct option.`;
+}
+function drawQuiz(){
+  const el=document.getElementById("quiz-area");if(!el)return;
+  const hist=document.getElementById("quiz-hist");
+  if(!qz||qz.phase==="idle"){
+    el.innerHTML=`<p class="hint">Claude writes a short quiz on this subject, with extra questions on topics you rate New or Shaky. Questions are written by AI, so check anything that looks wrong with your teacher or the marking instructions. The first time, Claude asks for your permission.</p>
+      <div class="f" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end"><div class="fld"><label for="qz-n">Questions</label><select id="qz-n"><option value="5">5</option><option value="10">10</option></select></div><button class="btn" data-qstart>Start quiz</button></div>`;
+  }else if(qz.phase==="loading"){
+    el.innerHTML=`<p role="status">Claude is writing your questions. This can take up to a minute.</p><div><button class="btn ghost small" data-qstop>Stop</button></div>`;
+  }else if(qz.phase==="error"){
+    el.innerHTML=`<p role="alert">${esc(qz.msg)}</p><div><button class="btn" data-qstart>Try again</button></div>`;
+  }else if(qz.phase==="ask"){
+    const q=qz.qs[qz.i],a=qz.sel;
+    el.innerHTML=`<span class="eyebrow">Question ${qz.i+1} of ${qz.qs.length} · ${qz.score} right so far</span>
+      <div class="qq">${esc(q.q)}</div>
+      <div class="opts">${q.options.map((o,j)=>`<button class="opt ${a==null?"":j===q.answer?"good":j===a?"bad":""}" data-opt="${j}" ${a==null?"":"disabled"}><b>${LET[j]}</b><span>${esc(o)}</span></button>`).join("")}</div>
+      ${a==null?"":`<div class="why" role="status"><b>${a===q.answer?"Correct.":"Not quite. The answer is "+LET[q.answer]+"."}</b> ${esc(q.why||"")}</div><div><button class="btn" data-qnext id="qnext">${qz.i+1<qz.qs.length?"Next question":"See result"}</button></div>`}`;
+    if(a!=null){const nb=document.getElementById("qnext");if(nb)nb.focus()}
+  }else if(qz.phase==="done"){
+    const wrong=qz.wrong;
+    el.innerHTML=`<div><span class="big">${qz.score} out of ${qz.qs.length}</span></div>
+      ${wrong.length?`<div><h3>Revisit these</h3><ul class="list">${[...new Set(wrong.map(w=>w.topic))].map(t=>`<li><span>${esc(SUBJ[qz.k].topics[t]||"General")}</span></li>`).join("")}</ul><p class="hint">Rate these topics Shaky if they felt hard.</p></div>`:`<p>Every answer was right.</p>`}
+      <div><button class="btn" data-qagain>New quiz</button></div>`;
+  }
+  if(hist)hist.innerHTML=histHtml(qz?qz.k:cur);
+}
+async function startQuiz(){
+  const n=+(document.getElementById("qz-n")||{value:5}).value||5;
+  qz={k:cur,phase:"loading",n,qs:[],i:0,sel:null,score:0,wrong:[]};drawQuiz();
+  qctl=new AbortController();const mine=qctl;
+  try{
+    const arr=await sampleFn.json(quizPrompt(cur,n),{signal:mine.signal,cache:false});
+    const tn=SUBJ[qz.k].topics.length;
+    const qs=(Array.isArray(arr)?arr:[]).filter(q=>q&&typeof q.q==="string"&&Array.isArray(q.options)&&q.options.length===4&&q.options.every(o=>typeof o==="string")&&Number.isInteger(q.answer)&&q.answer>=0&&q.answer<4).map(q=>({q:q.q,options:q.options,answer:q.answer,why:typeof q.why==="string"?q.why:"",topic:Number.isInteger(q.topic)&&q.topic>=0&&q.topic<tn?q.topic:0})).slice(0,n);
+    if(qs.length<3){qz={k:qz.k,phase:"error",msg:"Claude did not return enough usable questions. Try again."};drawQuiz();return}
+    qz.qs=qs;qz.phase="ask";drawQuiz();
+  }catch(err){
+    if(!qz||qz.phase!=="loading")return;
+    if(err&&err.code==="cancelled"){qz={k:qz.k,phase:"idle"};drawQuiz();return}
+    qz={k:qz.k,phase:"error",msg:qerr[err&&err.code]||"Something went wrong while writing the quiz. Try again."};drawQuiz();
+  }
+}
+function finishQuiz(){
+  qz.phase="done";
+  const arr=(st.quiz[qz.k]=st.quiz[qz.k]||[]);arr.push({t:Date.now(),s:qz.score,n:qz.qs.length});
+  if(arr.length>10)arr.splice(0,arr.length-10);
+  persist();drawQuiz();
+}
+
+/* ---------- router ---------- */
+let cur="home";
+function render(focusId){
+  const app=document.getElementById("app");
+  if(!ready){app.innerHTML=`<header><span class="eyebrow">SQA National 5</span><h1>N5 Study Planner</h1><p class="hint" role="status">Loading the planner…</p></header>`;return}
+  app.innerHTML=cur==="home"?home():subject(cur);
+  if(cur!=="home"&&!ro()&&sampleFn){if(!qz||qz.k!==cur)qz={k:cur,phase:"idle"};drawQuiz()}
+  if(focusId){const el=document.getElementById(focusId);if(el)el.focus()}
+}
+function go(k){
+  if(qctl){qctl.abort();qctl=null}
+  qz=null;
+  cur=SUBJ[k]?k:"home";
+  render();window.scrollTo(0,0);
+  try{location.hash=cur==="home"?"":cur}catch(_){}
+}
+function updateGauge(k){
+  const m=metrics(k);
+  document.getElementById("g-pct").textContent=pct(m.progress)+"%";
+  document.getElementById("g-fill").style.width=pct(m.progress)+"%";
+  const pill=document.getElementById("g-pill");pill.className="pill "+m.status;pill.textContent=STAT[m.status];
+  document.getElementById("g-text").textContent=advice(m);
+  document.getElementById("t-count").textContent=`${m.rated} of ${m.n} rated`;
+}
+document.addEventListener("click",ev=>{
+  const t=ev.target;
+  const g=t.closest("[data-go]");if(g){go(g.dataset.go);return}
+  const act=t.closest("[data-act]");
+  if(act){preview=act.dataset.act==="preview";render();window.scrollTo(0,0);return}
+  if(t.closest("[data-qstart]")){startQuiz();return}
+  if(t.closest("[data-qstop]")){if(qctl)qctl.abort();return}
+  const op=t.closest("[data-opt]");
+  if(op&&qz&&qz.phase==="ask"&&qz.sel==null){
+    const j=+op.dataset.opt,q=qz.qs[qz.i];qz.sel=j;
+    if(j===q.answer)qz.score++;else qz.wrong.push(q);
+    drawQuiz();return}
+  if(t.closest("[data-qnext]")&&qz){
+    if(qz.i+1<qz.qs.length){qz.i++;qz.sel=null;drawQuiz()}else finishQuiz();return}
+  if(t.closest("[data-qagain]")){qz={k:cur,phase:"idle"};drawQuiz();return}
+  if(ro())return;
+  const dp=t.closest("[data-delp]");
+  if(dp){st.papers[cur].splice(+dp.dataset.delp,1);persist();render();return}
+  const dd=t.closest("[data-deld]");
+  if(dd){st.dl[cur]=(st.dl[cur]||[]).filter(x=>String(x.id)!==dd.dataset.deld);persist();render();return}
+});
+document.addEventListener("change",ev=>{
+  if(ro())return;
+  const r=ev.target.closest("input[type=radio][data-k]");if(!r)return;
+  const key=r.dataset.k+":"+r.dataset.i;
+  if(+r.value)st.rate[key]=+r.value;else delete st.rate[key];
+  persist();updateGauge(r.dataset.k);
+});
+let nt;
+document.addEventListener("input",ev=>{
+  const t=ev.target.closest("[data-notes]");if(!t)return;
+  clearTimeout(nt);nt=setTimeout(()=>{st.notes[t.dataset.notes]=t.value;saveLocal()},300);
+});
+document.addEventListener("submit",ev=>{
+  const f=ev.target.closest("form[data-form]");if(!f)return;
+  ev.preventDefault();
+  if(ro())return;
+  if(f.dataset.form==="paper"){
+    const name=document.getElementById("p-name").value.trim(),got=parseFloat(document.getElementById("p-got").value),out=parseFloat(document.getElementById("p-out").value);
+    const err=document.getElementById("p-err");
+    if(!name){err.textContent="Give the paper a name, such as 2025 Paper 1.";return}
+    if(!(out>0)||!(got>=0)||got>out){err.textContent="Enter your mark and the total. The mark cannot be more than the total.";return}
+    (st.papers[cur]=st.papers[cur]||[]).push({name,got,out});persist();render("p-name");
+  }else{
+    const label=document.getElementById("d-name").value.trim(),date=document.getElementById("d-date").value;
+    const err=document.getElementById("d-err");
+    if(!label||!date){err.textContent="Add what it is and the date.";return}
+    (st.dl[cur]=st.dl[cur]||[]).push({id:Date.now(),label,date});persist();render("d-name");
+  }
+});
+
+/* ---------- start-up ---------- */
+const h0=(location.hash||"").replace("#","");
+cur=SUBJ[h0]?h0:"home";
+render();
+async function boot(){
+  const c=window.claude;
+  const finish=()=>{if(!ready){ready=true;render()}};
+  if(!c||!c.use){finish();return}
+  setTimeout(finish,9000);
+  try{user=await c.use("user")}catch(_){}
+  try{db=await c.use("db")}catch(_){}
+  try{sampleFn=await c.use("sample")}catch(_){}
+  try{isOwner=user?await user.isOwner():!db}catch(_){isOwner=!db}
+  if(!db){finish();return}
+  ref=db.doc("progress/main");
+  let first=true;
+  try{
+    ref.onSnapshot(snap=>{
+      const d=snap.exists?snap.data():null;
+      if(first){
+        first=false;
+        if(d)applyShared(d);
+        else if(isOwner){st.updated=Date.now();flush()}
+        ready=true;render();return;
+      }
+      if(!d||snap.metadata.hasPendingWrites)return;
+      if(isOwner&&(d.updated===lastWrite||d.updated===st.updated))return;
+      const ae=document.activeElement;
+      if(isOwner&&ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return;
+      applyShared(d);
+      if(!(qz&&(qz.phase==="loading"||qz.phase==="ask")))render();
+    },()=>finish());
+  }catch(_){finish()}
+}
+boot();
+</script>
+
+</body></html>
